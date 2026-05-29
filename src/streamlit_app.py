@@ -6,7 +6,7 @@ from datetime import date
 from langchain_anthropic import ChatAnthropic
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -25,45 +25,35 @@ def process_upload_file(uploaded_file):
         text = uploaded_file.read().decode("utf-8")
 
     # Step 2 - Chunking
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=300,
-        chunk_overlap=50
-    )
+    splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
     chunks = splitter.split_text(text)
 
     # Step 3 - Embeddings
-    embeddings = HuggingFaceEmbeddings(
-        model_name="all-MiniLM-L6-v2"
-    )
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
     # Step 4 - Convert and store in ChromaDB
     chunks = [Document(page_content=chunk) for chunk in chunks]
-    vectorstore = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings
-    )
+    vectorstore = FAISS.from_documents(documents=chunks, embedding=embeddings)
 
     # Step 5 - Build chain
-    total_chunks = len (chunks)
+    total_chunks = len(chunks)
 
-    if total_chunks <=5:
+    if total_chunks <= 5:
         k = 2
-    elif total_chunks <=15:
+    elif total_chunks <= 15:
         k = 4
     elif total_chunks <= 30:
         k = 6
-    else :
+    else:
         k = 8
-    retriever = vectorstore.as_retriever(
-        search_kwargs={"k": k}  
-    )
+    retriever = vectorstore.as_retriever(search_kwargs={"k": k})
 
     print(f"Document has {total_chunks} chunks -> using k = {k}")
 
     llm = ChatAnthropic(
         model="claude-haiku-4-5-20251001",
         api_key=os.environ.get("ANTHROPIC_API_KEY"),
-        max_tokens=500
+        max_tokens=500,
     )
 
     # Generic prompt — works for ANY document, not specific to one
@@ -86,10 +76,10 @@ def process_upload_file(uploaded_file):
 
     chain = (
         {
-            "context": itemgetter("question") | retriever | format_docs, 
+            "context": itemgetter("question") | retriever | format_docs,
             "question": itemgetter("question"),
             "chat_history": itemgetter("chat_history"),
-            "today" : itemgetter("today")
+            "today": itemgetter("today"),
         }
         | prompt
         | llm
@@ -97,6 +87,7 @@ def process_upload_file(uploaded_file):
     )
 
     return chain
+
 
 # ── Page Setup ─────────────────────────────────────────────────────
 st.set_page_config(page_title="AI Document Assistant", layout="wide")
@@ -113,7 +104,8 @@ if "chain" not in st.session_state:
 if "current_file" not in st.session_state:
     st.session_state.current_file = None
 
-#--- Chat history
+
+# --- Chat history
 def get_chat_history():
     history = ""
     for msg in st.session_state.messages:
@@ -121,14 +113,12 @@ def get_chat_history():
         history += f"{role} : {msg['content']}\n"
     return history
 
+
 # ── Sidebar ────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("📂 Upload Your Document")
 
-    uploaded_file = st.file_uploader(
-        "Choose a PDF or TXT file",
-        type=["pdf", "txt"]
-    )
+    uploaded_file = st.file_uploader("Choose a PDF or TXT file", type=["pdf", "txt"])
 
     # File handling logic:
     if uploaded_file is not None:
@@ -178,12 +168,14 @@ else:
         # Get and show answer
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                #now passing both question and chat history
-                answer = st.session_state.chain.invoke({
-                    "question" : question,
-                    "chat_history": get_chat_history(),
-                    "today" : date.today().strftime("%B %d %Y")
-                })
+                # now passing both question and chat history
+                answer = st.session_state.chain.invoke(
+                    {
+                        "question": question,
+                        "chat_history": get_chat_history(),
+                        "today": date.today().strftime("%B %d %Y"),
+                    }
+                )
             st.write(answer)
 
         # Save answer to history
