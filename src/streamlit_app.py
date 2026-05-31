@@ -63,7 +63,7 @@ def process_upload_file(uploaded_file):
                                               
     YOUR RULES:
     1. Answer ONLY from the context provided
-    2. If answer not in context -> say "I don't havr that information in the provided document."
+    2. If answer not in context -> say "I don't have that information in the provided document."
     3. If calculation needed -> show your working step by step
     4. Match answer style to document type
     5. Today's date is {today} - use this for any date calculations
