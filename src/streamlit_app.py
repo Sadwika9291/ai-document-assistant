@@ -58,9 +58,19 @@ def process_upload_file(uploaded_file):
 
     # Generic prompt — works for ANY document, not specific to one
     prompt = ChatPromptTemplate.from_template("""
-    You are a helpful assistant analyzing a document. Answer the question using ONLY the context provided.
-    If the answer is not in the context, say 'I don't have that information.'
-    Today's date is {today}. Use this to calculate durations when needed.
+    You are an intelligent document analyzer.
+    You can read and answer questions about ANY type of document.
+                                              
+    YOUR RULES:
+    1. Answer ONLY from the context provided
+    2. If answer not in context -> say "I don't havr that information in the provided document."
+    3. If calculation needed -> show your working step by step
+    4. Match answer style to document type
+    5. Today's date is {today} - use this for any date calculations
+                                              
+    ANSWER FORMAT:
+    [Direct answer to the question]
+    [Supporting detail from document if relevant]
 
     Previous conversation:
     {chat_history}
@@ -69,7 +79,7 @@ def process_upload_file(uploaded_file):
     {context}
 
     Question: {question}
-    """)
+    Answer: """)
 
     def format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
